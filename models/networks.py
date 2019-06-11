@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
@@ -613,3 +614,183 @@ class PixelDiscriminator(nn.Module):
     def forward(self, input):
         """Standard forward."""
         return self.net(input)
+
+
+class Flatten(nn.Module):
+
+    def forward(self, x):
+        return x.view(x.shape[0], -1)
+
+
+class ComponentVAE(nn.Module):
+
+    def __init__(self, input_nc, z_dim=16, full_res=False):
+        super().__init__()
+        self._input_nc = input_nc
+        self._z_dim = z_dim
+        # full_res = False # full res: 128x128, low res: 64x64
+        h_dim = 4096 if full_res else 1024
+        self.encoder = nn.Sequential(
+            nn.Conv2d(input_nc + 1, 32, 3, stride=2, padding=1),
+            nn.ReLU(True),
+            nn.Conv2d(32, 32, 3, stride=2, padding=1),
+            nn.ReLU(True),
+            nn.Conv2d(32, 64, 3, stride=2, padding=1),
+            nn.ReLU(True),
+            nn.Conv2d(64, 64, 3, stride=2, padding=1),
+            nn.ReLU(True),
+            Flatten(),
+            nn.Linear(h_dim, 256),
+            nn.ReLU(True),
+            nn.Linear(256, 32)
+        )
+        self.decoder = nn.Sequential(
+            nn.Conv2d(z_dim + 2, 32, 3),
+            nn.ReLU(True),
+            nn.Conv2d(32, 32, 3),
+            nn.ReLU(True),
+            nn.Conv2d(32, 32, 3),
+            nn.ReLU(True),
+            nn.Conv2d(32, 32, 3),
+            nn.ReLU(True),
+            nn.Conv2d(32, input_nc + 1, 1),
+        )
+        self._bg_logvar = 2 * torch.tensor(0.09).log()
+        self._fg_logvar = 2 * torch.tensor(0.11).log()
+
+    @staticmethod
+    def reparameterize(mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    @staticmethod
+    def spatial_broadcast(z, h, w):
+        # Batch size
+        n = z.shape[0]
+        # Expand spatially: (n, z_dim) -> (n, z_dim, h, w)
+        z_b = z.view((n, -1, 1, 1)).expand(-1, -1, h, w)
+        # Coordinate axes:
+        x = torch.linspace(-1, 1, w, device=z.device)
+        y = torch.linspace(-1, 1, h, device=z.device)
+        y_b, x_b = torch.meshgrid(y, x)
+        # Expand from (h, w) -> (n, 1, h, w)
+        x_b = x_b.expand(n, 1, -1, -1)
+        y_b = y_b.expand(n, 1, -1, -1)
+        # Concatenate along the channel dimension: final shape = (n, z_dim + 2, h, w)
+        z_sb = torch.cat((z_b, x_b, y_b), dim=1)
+        return z_sb
+
+    def forward(self, x, log_m_k, background=False):
+        """
+        :param x: Input image
+        :param log_m_k: Attention mask logits
+        :return: x_k and reconstructed mask logits
+        """
+        params = self.encoder(torch.cat((x, log_m_k), dim=1))
+
+        mu = params[:, :self._z_dim]
+        logvar = params[:, self._z_dim:]
+        z = self.reparameterize(mu, logvar)
+
+        h, w = x.shape[-2:]
+        # "The height and width of the input to this CNN were both 8 larger than the target output (i.e. image) size
+        #  to arrive at the target size (i.e. accommodating for the lack of padding)."
+        z_sb = self.spatial_broadcast(z, h + 8, w + 8)
+        output = self.decoder(z_sb)
+
+        x_k_mu = output[:, :self._input_nc]
+        m_k_logits = output[:, self._input_nc:]
+        x_k = self.reparameterize(x_k_mu, self._bg_logvar if background else self._fg_logvar)
+
+        return x_k, m_k_logits, mu, logvar
+
+
+class AttentionBlock(nn.Module):
+
+    def __init__(self, input_nc, output_nc, resize=True):
+        super().__init__()
+        self.conv = nn.Conv2d(input_nc, output_nc, 3, padding=1, bias=False)
+        self.norm = nn.InstanceNorm2d(output_nc, affine=True)
+        self._resize = resize
+
+    def forward(self, *inputs):
+        downsampling = len(inputs) == 1
+        x = inputs[0] if downsampling else torch.cat(inputs, dim=1)
+        x = self.conv(x)
+        x = self.norm(x)
+        x = skip = F.relu(x)
+        if self._resize:
+            x = F.interpolate(skip, scale_factor=0.5 if downsampling else 2., mode='nearest')
+        return (x, skip) if downsampling else x
+
+
+class Attention(nn.Module):
+    """Create a Unet-based generator"""
+
+    def __init__(self, input_nc, output_nc, ngf=64):
+        """Construct a Unet generator
+        Parameters:
+            input_nc (int)  -- the number of channels in input images
+            output_nc (int) -- the number of channels in output images
+            num_downs (int) -- the number of downsamplings in UNet. For example, # if |num_downs| == 7,
+                                image of size 128x128 will become of size 1x1 # at the bottleneck
+            ngf (int)       -- the number of filters in the last conv layer
+
+        We construct the U-Net from the innermost layer to the outermost layer.
+        It is a recursive process.
+        """
+        super(Attention, self).__init__()
+        self.downblock1 = AttentionBlock(input_nc + 1, ngf)
+        self.downblock2 = AttentionBlock(ngf, ngf * 2)
+        self.downblock3 = AttentionBlock(ngf * 2, ngf * 4)
+        self.downblock4 = AttentionBlock(ngf * 4, ngf * 8)
+        self.downblock5 = AttentionBlock(ngf * 8, ngf * 8, resize=False)
+        # no resizing occurs in the last block of each path
+        # self.downblock6 = AttentionBlock(ngf * 8, ngf * 8, resize=False)
+
+        self.mlp = nn.Sequential(
+            nn.Linear(4 * 4 * ngf * 8, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 4 * 4 * ngf * 8),
+            nn.ReLU(),
+        )
+
+        # self.upblock1 = AttentionBlock(2 * ngf * 8, ngf * 8)
+        self.upblock2 = AttentionBlock(2 * ngf * 8, ngf * 8)
+        self.upblock3 = AttentionBlock(2 * ngf * 8, ngf * 4)
+        self.upblock4 = AttentionBlock(2 * ngf * 4, ngf * 2)
+        self.upblock5 = AttentionBlock(2 * ngf * 2, ngf)
+        # no resizing occurs in the last block of each path
+        self.upblock6 = AttentionBlock(2 * ngf, ngf, resize=False)
+
+        self.output = nn.Conv2d(ngf, output_nc, 1)
+
+    def forward(self, x, log_s_k):
+        # Downsampling blocks
+        x, skip1 = self.downblock1(torch.cat((x, log_s_k), dim=1))
+        x, skip2 = self.downblock2(x)
+        x, skip3 = self.downblock3(x)
+        x, skip4 = self.downblock4(x)
+        x, skip5 = self.downblock5(x)
+        skip6 = skip5
+        # The input to the MLP is the last skip tensor collected from the downsampling path (after flattening)
+        # _, skip6 = self.downblock6(x)
+        # Flatten
+        x = skip6.view(skip6.shape[0], -1)
+        x = self.mlp(x)
+        # Reshape to match shape of last skip tensor
+        x = x.view(skip6.shape)
+        # Upsampling blocks
+        # x = self.upblock1(x, skip6)
+        x = self.upblock2(x, skip5)
+        x = self.upblock3(x, skip4)
+        x = self.upblock4(x, skip3)
+        x = self.upblock5(x, skip2)
+        x = self.upblock6(x, skip1)
+        # Output layer
+        x = self.output(x)
+        x = F.logsigmoid(x)
+        return x
