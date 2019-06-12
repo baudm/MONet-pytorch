@@ -92,16 +92,15 @@ class MONetModel(BaseModel):
             x_tilde_k, m_tilde_k_logits, z_mu_k, z_logvar_k = self.netCVAE(self.x, log_m_k, k == 0)
 
             m_k = log_m_k.exp()
-
-            # Iteratively reconstruct the input image
             x_k_masked = m_k * x_tilde_k
-            self.x_tilde += x_k_masked
 
             # Get outputs for kth step
             setattr(self, 'm{}'.format(k), m_k * 2. - 1.) # shift mask from [0, 1] to [-1, 1]
             setattr(self, 'x{}'.format(k), x_tilde_k)
             setattr(self, 'xm{}'.format(k), x_k_masked)
 
+            # Iteratively reconstruct the input image
+            self.x_tilde += x_k_masked
             # Accumulate
             m.append(m_k)
             m_tilde_logits.append(m_tilde_k_logits)
