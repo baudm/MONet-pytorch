@@ -51,7 +51,7 @@ class MONetModel(BaseModel):
         self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim), gpu_ids=self.gpu_ids)
         # define networks; you can use opt.isTrain to specify different behaviors for training and test.
         if self.isTrain:  # only defined during training time
-            self.criterionRecon = nn.MSELoss(reduction='sum')
+            self.criterionRecon = nn.MSELoss(reduction='none')
             self.criterionKL = nn.KLDivLoss(reduction='batchmean')
             self.optimizer = optim.RMSprop(chain(self.netAttn.parameters(), self.netCVAE.parameters()), lr=opt.lr)
             self.optimizers = [self.optimizer]
@@ -115,8 +115,8 @@ class MONetModel(BaseModel):
 
     def backward(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
-        self.loss_E = -0.5 * torch.sum(1 + self.z_logvar - self.z_mu.pow(2) - self.z_logvar.exp())
-        self.loss_D = self.criterionRecon(self.x_tilde, self.x)
+        self.loss_E = -0.5 * (1 + self.z_logvar - self.z_mu.pow(2) - self.z_logvar.exp()).sum(dim=-1).mean()
+        self.loss_D = self.criterionRecon(self.x_tilde, self.x).sum(dim=[1, 2, 3]).mean()
         self.loss_mask = self.criterionKL(self.m_tilde_logits.log_softmax(dim=1), self.m)
         loss = self.loss_D + self.opt.beta * self.loss_E + self.opt.gamma * self.loss_mask
         loss.backward()
