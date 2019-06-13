@@ -779,7 +779,7 @@ class Attention(nn.Module):
         # The input to the MLP is the last skip tensor collected from the downsampling path (after flattening)
         # _, skip6 = self.downblock6(x)
         # Flatten
-        x = skip6.view(skip6.shape[0], -1)
+        x = skip6.flatten(start_dim=1)
         x = self.mlp(x)
         # Reshape to match shape of last skip tensor
         x = x.view(skip6.shape)
