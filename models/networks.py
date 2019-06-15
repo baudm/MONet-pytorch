@@ -661,7 +661,7 @@ class ComponentVAE(nn.Module):
     @staticmethod
     def reparameterize(mu, logvar):
         std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
+        eps = torch.randn_like(mu)
         return mu + eps * std
 
     @staticmethod
@@ -701,9 +701,9 @@ class ComponentVAE(nn.Module):
 
         x_k_mu = output[:, :self._input_nc]
         m_k_logits = output[:, self._input_nc:]
-        x_k = self.reparameterize(x_k_mu, self._bg_logvar if background else self._fg_logvar)
+        # x_k = self.reparameterize(x_k_mu, self._bg_logvar if background else self._fg_logvar)
 
-        return x_k, m_k_logits, mu, logvar
+        return x_k_mu, m_k_logits, mu, logvar
 
 
 class AttentionBlock(nn.Module):
