@@ -114,8 +114,6 @@ class MONetModel(BaseModel):
             z_logvar.append(z_logvar_k)
 
         self.b = torch.cat(b, 1)
-        # c is used for numerical stability
-        self.c = self.b.max(1, keepdim=True)[0]
         self.m = torch.cat(m, dim=1)
         self.m_tilde_logits = torch.cat(m_tilde_logits, dim=1)
         self.z_mu = torch.cat(z_mu, dim=1)
@@ -124,9 +122,7 @@ class MONetModel(BaseModel):
     def backward(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.loss_E = -0.5 * (1 + self.z_logvar - self.z_mu.pow(2) - self.z_logvar.exp()).sum(dim=-1).mean()
-        # self.loss_D = self.criterionRecon(self.x_tilde, self.x) / self.x.shape[0]
-        log_sum_exp = torch.log(torch.sum(self.m * torch.exp(self.b - self.c), dim=1, keepdim=True))
-        self.loss_D = -torch.sum(log_sum_exp + self.c) / self.x.shape[0]
+        self.loss_D = -torch.logsumexp(self.m.log().unsqueeze(2) + self.b, dim=1).sum() / self.x.shape[0]
         self.loss_mask = self.criterionKL(self.m_tilde_logits.log_softmax(dim=1), self.m)
         loss = self.loss_D + self.opt.beta * self.loss_E + self.opt.gamma * self.loss_mask
         loss.backward()
