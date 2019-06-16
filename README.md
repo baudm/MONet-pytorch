@@ -2,7 +2,7 @@
 
 We provide a PyTorch implementation of [MONet](https://arxiv.org/abs/1901.11390).
 
-This project is built on top of the CycleGAN/pix2pix code written by [Jun-Yan Zhu](https://github.com/junyanz) and [Taesung Park](https://github.com/taesung), and supported by [Tongzhou Wang](https://ssnl.github.io/).
+This project is built on top of the [CycleGAN/pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) code written by [Jun-Yan Zhu](https://github.com/junyanz) and [Taesung Park](https://github.com/taesung), and supported by [Tongzhou Wang](https://ssnl.github.io/).
 
 **Note**: The current software works well with PyTorch 1.0+.
 
