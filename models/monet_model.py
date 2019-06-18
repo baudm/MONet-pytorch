@@ -1,4 +1,5 @@
 """C. P. Burgess et al., "MONet: Unsupervised Scene Decomposition and Representation," pp. 1–22, 2019."""
+import math
 from itertools import chain
 
 import torch
@@ -67,17 +68,16 @@ class MONetModel(BaseModel):
 
     def forward(self):
         """Run forward pass. This will be called by both functions <optimize_parameters> and <test>."""
-        # Initial s_k = 1: shape = (N, 1, H, W)
-        shape = list(self.x.shape)
-        shape[1] = 1
-        log_s_k = self.x.new_zeros(shape)
-
+        self.loss_E = 0
         self.x_tilde = 0
         b = []
         m = []
         m_tilde_logits = []
-        z_mu = []
-        z_logvar = []
+
+        # Initial s_k = 1: shape = (N, 1, H, W)
+        shape = list(self.x.shape)
+        shape[1] = 1
+        log_s_k = self.x.new_zeros(shape)
 
         for k in range(self.opt.num_slots):
             # Derive mask from current scope
@@ -90,40 +90,39 @@ class MONetModel(BaseModel):
                 log_m_k = log_s_k
 
             # Get component and mask reconstruction, as well as the z_k parameters
-            x_tilde_k, m_tilde_k_logits, z_mu_k, z_logvar_k = self.netCVAE(self.x, log_m_k, k == 0)
+            m_tilde_k_logits, x_mu_k, x_var_k, z_mu_k, z_logvar_k = self.netCVAE(self.x, log_m_k, k == 0)
+
+            # KLD is additive for independent distributions
+            self.loss_E += -0.5 * (1 + z_logvar_k - z_mu_k.pow(2) - z_logvar_k.exp()).sum()
 
             m_k = log_m_k.exp()
-            x_k_masked = m_k * x_tilde_k
+            x_k_masked = m_k * x_mu_k
 
-            stdev = 0.09 if k == 0 else 0.11
-            variance = stdev ** 2
-            b_k = (self.x - x_tilde_k).pow(2) / (-2 * variance)
+            # Exponents for the decoder loss
+            b_k = -(self.x - x_mu_k).pow(2) / (2 * x_var_k) + m_k.clamp(min=self.eps).log() \
+                  - 0.5 * (2 * math.pi * x_var_k).log()
             b.append(b_k.unsqueeze(1))
 
             # Get outputs for kth step
             setattr(self, 'm{}'.format(k), m_k * 2. - 1.) # shift mask from [0, 1] to [-1, 1]
-            setattr(self, 'x{}'.format(k), x_tilde_k)
+            setattr(self, 'x{}'.format(k), x_mu_k)
             setattr(self, 'xm{}'.format(k), x_k_masked)
 
-            # Iteratively reconstruct the input image
+            # Iteratively reconstruct the output image
             self.x_tilde += x_k_masked
             # Accumulate
             m.append(m_k)
             m_tilde_logits.append(m_tilde_k_logits)
-            z_mu.append(z_mu_k)
-            z_logvar.append(z_logvar_k)
 
         self.b = torch.cat(b, dim=1)
         self.m = torch.cat(m, dim=1)
         self.m_tilde_logits = torch.cat(m_tilde_logits, dim=1)
-        self.z_mu = torch.cat(z_mu, dim=1)
-        self.z_logvar = torch.cat(z_logvar, dim=1)
 
     def backward(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         n = self.x.shape[0]
-        self.loss_E = -0.5 * (1 + self.z_logvar - self.z_mu.pow(2) - self.z_logvar.exp()).sum() / n
-        self.loss_D = -torch.logsumexp(self.m.clamp(min=self.eps).log().unsqueeze(2) + self.b, dim=1).sum() / n
+        self.loss_E /= n
+        self.loss_D = -torch.logsumexp(self.b, dim=1).sum() / n
         self.loss_mask = self.criterionKL(self.m_tilde_logits.log_softmax(dim=1), self.m)
         loss = self.loss_D + self.opt.beta * self.loss_E + self.opt.gamma * self.loss_mask
         loss.backward()

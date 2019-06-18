@@ -655,8 +655,8 @@ class ComponentVAE(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(32, input_nc + 1, 1),
         )
-        self._bg_logvar = 2 * torch.tensor(0.09).log()
-        self._fg_logvar = 2 * torch.tensor(0.11).log()
+        self._bg_var = torch.tensor(0.09 ** 2)
+        self._fg_var = torch.tensor(0.11 ** 2)
 
     @staticmethod
     def reparameterize(mu, logvar):
@@ -688,22 +688,21 @@ class ComponentVAE(nn.Module):
         :return: x_k and reconstructed mask logits
         """
         params = self.encoder(torch.cat((x, log_m_k), dim=1))
+        z_mu = params[:, :self._z_dim]
+        z_logvar = params[:, self._z_dim:]
+        z = self.reparameterize(z_mu, z_logvar)
 
-        mu = params[:, :self._z_dim]
-        logvar = params[:, self._z_dim:]
-        z = self.reparameterize(mu, logvar)
-
-        h, w = x.shape[-2:]
         # "The height and width of the input to this CNN were both 8 larger than the target output (i.e. image) size
         #  to arrive at the target size (i.e. accommodating for the lack of padding)."
+        h, w = x.shape[-2:]
         z_sb = self.spatial_broadcast(z, h + 8, w + 8)
+
         output = self.decoder(z_sb)
+        x_mu = output[:, :self._input_nc]
+        x_var = self._bg_var if background else self._fg_var
+        m_logits = output[:, self._input_nc:]
 
-        x_k_mu = output[:, :self._input_nc]
-        m_k_logits = output[:, self._input_nc:]
-        # x_k = self.reparameterize(x_k_mu, self._bg_logvar if background else self._fg_logvar)
-
-        return x_k_mu, m_k_logits, mu, logvar
+        return m_logits, x_mu, x_var, z_mu, z_logvar
 
 
 class AttentionBlock(nn.Module):
