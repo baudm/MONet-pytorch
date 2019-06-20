@@ -619,7 +619,7 @@ class PixelDiscriminator(nn.Module):
 class Flatten(nn.Module):
 
     def forward(self, x):
-        return x.view(x.shape[0], -1)
+        return x.flatten(start_dim=1)
 
 
 class ComponentVAE(nn.Module):
@@ -655,8 +655,8 @@ class ComponentVAE(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(32, input_nc + 1, 1),
         )
-        self._bg_var = torch.tensor(0.09 ** 2)
-        self._fg_var = torch.tensor(0.11 ** 2)
+        self._bg_logvar = 2 * torch.tensor(0.09).log()
+        self._fg_logvar = 2 * torch.tensor(0.11).log()
 
     @staticmethod
     def reparameterize(mu, logvar):
@@ -699,10 +699,10 @@ class ComponentVAE(nn.Module):
 
         output = self.decoder(z_sb)
         x_mu = output[:, :self._input_nc]
-        x_var = self._bg_var if background else self._fg_var
+        x_logvar = self._bg_logvar if background else self._fg_logvar
         m_logits = output[:, self._input_nc:]
 
-        return m_logits, x_mu, x_var, z_mu, z_logvar
+        return m_logits, x_mu, x_logvar, z_mu, z_logvar
 
 
 class AttentionBlock(nn.Module):

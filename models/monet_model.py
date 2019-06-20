@@ -1,5 +1,4 @@
 """C. P. Burgess et al., "MONet: Unsupervised Scene Decomposition and Representation," pp. 1–22, 2019."""
-import math
 from itertools import chain
 
 import torch
@@ -90,7 +89,7 @@ class MONetModel(BaseModel):
                 log_m_k = log_s_k
 
             # Get component and mask reconstruction, as well as the z_k parameters
-            m_tilde_k_logits, x_mu_k, x_var_k, z_mu_k, z_logvar_k = self.netCVAE(self.x, log_m_k, k == 0)
+            m_tilde_k_logits, x_mu_k, x_logvar_k, z_mu_k, z_logvar_k = self.netCVAE(self.x, log_m_k, k == 0)
 
             # KLD is additive for independent distributions
             self.loss_E += -0.5 * (1 + z_logvar_k - z_mu_k.pow(2) - z_logvar_k.exp()).sum()
@@ -99,8 +98,7 @@ class MONetModel(BaseModel):
             x_k_masked = m_k * x_mu_k
 
             # Exponents for the decoder loss
-            b_k = -(self.x - x_mu_k).pow(2) / (2 * x_var_k) + m_k.clamp(min=self.eps).log() \
-                  - 0.5 * (2 * math.pi * x_var_k).log()
+            b_k = log_m_k - 0.5 * x_logvar_k - (self.x - x_mu_k).pow(2) / (2 * x_logvar_k.exp())
             b.append(b_k.unsqueeze(1))
 
             # Get outputs for kth step
