@@ -4,18 +4,18 @@ We provide a PyTorch implementation of [MONet](https://arxiv.org/abs/1901.11390)
 
 This project is built on top of the [CycleGAN/pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) code written by [Jun-Yan Zhu](https://github.com/junyanz) and [Taesung Park](https://github.com/taesung), and supported by [Tongzhou Wang](https://ssnl.github.io/).
 
-**Note**: The current software works well with PyTorch 1.0+.
+**Note**: The implementation is developed and tested on Python 3.7 and PyTorch 1.1.
 
 You may find useful information in [training/test tips](docs/tips.md) and [frequently asked questions](docs/qa.md). To implement custom models and datasets, check out our [templates](#custom-model-and-dataset). To help users better understand and adapt our codebase, we provide an [overview](docs/overview.md) of the code structure of this repository.
 
 ## Current Results
-<img src="https://i.imgur.com/59x65ML.png" width="800"/>
-<img src="https://i.imgur.com/HUuhdzC.png" width="800"/>
+<img src="https://i.imgur.com/59x65ML.png" width="748"/>
+<img src="https://i.imgur.com/HUuhdzC.png" width="748"/>
 
 ## Prerequisites
-- Linux or macOS
-- Python 3
-- CPU or NVIDIA GPU + CUDA CuDNN
+- Linux or macOS (not tested)
+- Python 3.7
+- CPU or NVIDIA GPU + CUDA 10 + CuDNN
 
 ## Getting Started
 ### Installation
@@ -26,7 +26,7 @@ git clone https://github.com/baudm/MONet-pytorch.git
 cd MONet-pytorch
 ```
 
-- Install [PyTorch](http://pytorch.org and) 1.0+ and other dependencies (e.g., torchvision, [visdom](https://github.com/facebookresearch/visdom) and [dominate](https://github.com/Knio/dominate)).
+- Install [PyTorch](http://pytorch.org and) 1.1+ and other dependencies (e.g., torchvision, [visdom](https://github.com/facebookresearch/visdom) and [dominate](https://github.com/Knio/dominate)).
   - For pip users, please type the command `pip install -r requirements.txt`.
   - For Conda users, we provide a installation script `./scripts/conda_deps.sh`. Alternatively, you can create a new Conda environment using `conda env create -f environment.yml`.
   - For Docker users, we provide the pre-built Docker image and Dockerfile. Please refer to our [Docker](docs/docker.md) page.
