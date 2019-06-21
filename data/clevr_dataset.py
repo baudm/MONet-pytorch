@@ -1,13 +1,10 @@
 import os
 
-from torchvision import transforms as T
+import torchvision.transforms.functional as TF
 
-from data.base_dataset import BaseDataset, __crop
+from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
 from PIL import Image
-
-
-crop = lambda img: __crop(img, (64, 29), 192)
 
 
 class CLEVRDataset(BaseDataset):
@@ -19,7 +16,8 @@ class CLEVRDataset(BaseDataset):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         parser.set_defaults(input_nc=3, output_nc=3,
-                            crop_size=128,
+                            crop_size=192, # crop is done first
+                            load_size=64,  # before resize
                             num_slots=11, display_ncols=11)
         return parser
 
@@ -30,18 +28,14 @@ class CLEVRDataset(BaseDataset):
             opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
         BaseDataset.__init__(self, opt)
-        self.transform = self._get_transforms()
         p = os.path.join(opt.dataroot, 'images', 'train' if opt.isTrain else 'test')
         self.A_paths = sorted(make_dataset(p, opt.max_dataset_size))
 
-    @staticmethod
-    def _get_transforms():
-        return T.Compose([
-            T.Lambda(crop),
-            T.Resize(64),
-            T.ToTensor(),
-            T.Normalize(mean=3 * (0.5,), std=3 * (0.5,))
-        ])
+    def _transform(self, img):
+        img = TF.resized_crop(img, 64, 29, self.opt.crop_size, self.opt.crop_size, self.opt.load_size)
+        img = TF.to_tensor(img)
+        img = TF.normalize(img, [0.5] * self.opt.input_nc, [0.5] * self.opt.input_nc)
+        return img
 
     def __getitem__(self, index):
         """Return a data point and its metadata information.
@@ -55,7 +49,7 @@ class CLEVRDataset(BaseDataset):
         """
         A_path = self.A_paths[index]
         A_img = Image.open(A_path).convert('RGB')
-        A = self.transform(A_img)
+        A = self._transform(A_img)
         return {'A': A, 'A_paths': A_path}
 
     def __len__(self):
