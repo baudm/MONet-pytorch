@@ -49,9 +49,9 @@ class MONetModel(BaseModel):
         self.model_names = ['Attn', 'CVAE']
         self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1), gpu_ids=self.gpu_ids)
         self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim), gpu_ids=self.gpu_ids)
+        self.eps = torch.finfo(torch.float).eps
         # define networks; you can use opt.isTrain to specify different behaviors for training and test.
         if self.isTrain:  # only defined during training time
-            self.eps = torch.finfo(torch.float).eps
             self.criterionKL = nn.KLDivLoss(reduction='batchmean')
             self.optimizer = optim.RMSprop(chain(self.netAttn.parameters(), self.netCVAE.parameters()), lr=opt.lr)
             self.optimizers = [self.optimizer]
