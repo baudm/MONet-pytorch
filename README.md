@@ -6,12 +6,10 @@ This project is built on top of the [CycleGAN/pix2pix](https://github.com/junyan
 
 **Note**: The implementation is developed and tested on Python 3.7 and PyTorch 1.1.
 
-You may find useful information in [training/test tips](docs/tips.md) and [frequently asked questions](docs/qa.md). To implement custom models and datasets, check out our [templates](#custom-model-and-dataset). To help users better understand and adapt our codebase, we provide an [overview](docs/overview.md) of the code structure of this repository.
-
-## Current Results
-### CLEVR 64x64
-<img src="https://i.imgur.com/59x65ML.png" width="748"/>
-<img src="https://i.imgur.com/HUuhdzC.png" width="748"/>
+## Test Results
+### CLEVR 64x64 @ 160 epochs
+<img src="https://i.imgur.com/wjIyVhe.png" width="748"/>
+<img src="https://i.imgur.com/qFYkglK.png" width="748"/>
 
 ## Prerequisites
 - Linux or macOS (not tested)
@@ -44,5 +42,14 @@ python train.py --dataroot ./datasets/CLEVR_v1.0 --name clevr_monet --model mone
 ```
 To see more intermediate results, check out `./checkpoints/clevr_monet/web/index.html`.
 
+To generate a montage of the model outputs like the ones shown above:
+```bash
+./scripts/test_monet.sh
+./scripts/generate_monet_montage.sh
+```
+
 ### Apply a pre-trained model
-- TODO
+- Download pretrained weights for CLEVR 64x64:
+```bash
+./scripts/download_monet_model.sh clevr
+```
