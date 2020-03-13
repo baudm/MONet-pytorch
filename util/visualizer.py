@@ -5,13 +5,24 @@ import ntpath
 import time
 from . import util, html
 from subprocess import Popen, PIPE
-from scipy.misc import imresize
+from PIL import Image
 
 if sys.version_info[0] == 2:
     VisdomExceptionBase = Exception
 else:
     VisdomExceptionBase = ConnectionError
 
+def imresize(numpy_image_array, size_tuple, interp):
+    switch = {
+        'bicubic':Image.BICUBIC,
+        'nearest':Image.NEAREST,
+        'bilinear':Image.BILINEAR,
+        'lanczos':Image.LANCZOS
+    }
+    resample = switch.get(interp, Image.NEAREST)
+    pil_image = Image.fromarray(numpy_image_array)
+    pil_image.resize(size_tuple, resample)
+    return np.array(pil_image)
 
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
     """Save images to the disk.
