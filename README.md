@@ -8,7 +8,8 @@ This project is built on top of the [CycleGAN/pix2pix](https://github.com/junyan
 
 ## Implementation details
 ### Decoder Negative Log-Likelihood (NLL) loss
-<img src="https://latex.codecogs.com/gif.latex?\mathcal{L}(\theta,%20x)%20=%20-\sum_{n=1}^N%20\log%20\sum_{k=1}^K%20\exp{\bigg(\log{\dfrac{m_k}{\sqrt{\sigma_k^2}}}%20-%20\dfrac{(x_n%20-%20\mu_\theta(z_k))^2}{2\sigma_k^2}%20\bigg)}"/>
+<!--img src="https://latex.codecogs.com/gif.latex?\mathcal{L}(\theta,%20x)%20=%20-\sum_{n=1}^N%20\log%20\sum_{k=1}^K%20\exp{\bigg(\log{\dfrac{m_k}{\sqrt{\sigma_k^2}}}%20-%20\dfrac{(x_n%20-%20\mu_\theta(z_k))^2}{2\sigma_k^2}%20\bigg)}"/-->
+![Decoder NLL loss](imgs/decoder_nll.png)
 where *N* is the number of pixels in the image, and *K* is the number of mixture components.
 
 ## Test Results
