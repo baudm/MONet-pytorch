@@ -10,10 +10,10 @@ if [ "$FILE" != 'clevr' ]; then
 	exit 1
 fi
 
-mkdir -p ./checkpoints/${FILE}_pretrained
+mkdir -p ./checkpoints/${FILE}_monet_pretrained
 
-ATTN_MODEL_FILE=./checkpoints/${FILE}_pretrained/latest_net_Attn.pth
-CVAE_MODEL_FILE=./checkpoints/${FILE}_pretrained/latest_net_CVAE.pth
+ATTN_MODEL_FILE=./checkpoints/${FILE}_monet_pretrained/latest_net_Attn.pth
+CVAE_MODEL_FILE=./checkpoints/${FILE}_monet_pretrained/latest_net_CVAE.pth
 
 g_download() {
 	gURL="$1"
@@ -36,8 +36,8 @@ g_download "https://drive.google.com/open?id=1fA8ODaXhQE1rySH_L8PRVeMVjFG0pbQk" 
 
 shasums="$(mktemp)"
 cat > "$shasums" <<EOF
-0d2aeaac7dcc19181aeb84555b26ce51fe8aac2d  ./checkpoints/${FILE}_pretrained/160_net_Attn.pth
-3a4f2cc31147f4a12b7b52623574e9a1ac8ed056  ./checkpoints/${FILE}_pretrained/160_net_CVAE.pth
+0d2aeaac7dcc19181aeb84555b26ce51fe8aac2d  ./checkpoints/${FILE}_monet_pretrained/latest_net_Attn.pth
+3a4f2cc31147f4a12b7b52623574e9a1ac8ed056  ./checkpoints/${FILE}_monet_pretrained/latest_net_CVAE.pth
 EOF
 sha1sum -c "$shasums"
 rm "$shasums"
