@@ -29,8 +29,13 @@ where *I* is the number of pixels in the image, and *K* is the number of mixture
 
 ## Test Results
 ### CLEVR 64x64 @ 160 epochs
-<img src="https://i.imgur.com/wjIyVhe.png" width="748"/>
-<img src="https://i.imgur.com/qFYkglK.png" width="748"/>
+The first three rows correspond to the Attention network outputs (masks), raw Component VAE (CVAE) outputs, and the masked CVAE outputs, respectively. Each column corresponds to one of the K mixture components.
+
+For the fourth row, the first image is the ground truth while the second one is the composite image created by the pixel-wise addition of the K component images (third row).
+
+![CLEVR 1](imgs/wjIyVhe.png)
+
+![CLEVR 2](imgs/qFYkglK.png)
 
 ## Prerequisites
 - Linux or macOS (not tested)
