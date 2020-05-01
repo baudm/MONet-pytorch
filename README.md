@@ -8,10 +8,24 @@ This project is built on top of the [CycleGAN/pix2pix](https://github.com/junyan
 
 ## Implementation details
 ### Decoder Negative Log-Likelihood (NLL) loss
-<!--img src="https://latex.codecogs.com/gif.latex?\mathcal{L}(\theta,%20x)%20=%20-\sum_{n=1}^N%20\log%20\sum_{k=1}^K%20\exp{\bigg(\log{\dfrac{m_k}{\sqrt{\sigma_k^2}}}%20-%20\dfrac{(x_n%20-%20\mu_\theta(z_k))^2}{2\sigma_k^2}%20\bigg)}"/-->
+<!--
+MathJax source:
+
+$$\begin{equation}\begin{aligned}
+
+\mathcal{L}_{dec}(\theta, \mathbf{x}, \mathbf{m}, \mathbf{z}) &= -\log \sum_{k=1}^K \mathbf{m}_k p_\theta(\mathbf{x} | \mathbf{z}_k) && \text{First term of Eq. 3} \\
+
+ &= -\log \sum_{k=1}^K \mathbf{m}_k {1 \over \sigma_k \sqrt{2\pi}} \exp \left( - {(\mathbf{x}  -\mu_\theta(\mathbf{z}_k))^2  \over 2\sigma_k^2} \right) \\
+
+ &= -\log {1 \over \sqrt{2\pi}} \sum_{k=1}^K \exp \left( \log{\mathbf{m}_k \over \sigma_k} - {(\mathbf{x}  -\mu_\theta(\mathbf{z}_k))^2  \over 2\sigma_k^2} \right) \\
+
+ &= - \sum_{i=1}^I \log \sum_{k=1}^K \exp \left( \log{\mathbf{m}_k \over \sigma_k} - {(\mathbf{x}  -\mu_\theta(\mathbf{z}_k))^2  \over 2\sigma_k^2} \right) && \text{Sum over I pixels}
+
+\end{aligned}\end{equation}$$
+-->
 ![Decoder NLL loss](imgs/decoder_nll.png)
 
-where *N* is the number of pixels in the image, and *K* is the number of mixture components.
+where *I* is the number of pixels in the image, and *K* is the number of mixture components. The inner term of the loss function is implemented using `torch.logsumexp()`. Each pixel of the decoder output is assumed to be iid Gaussian, where sigma (the "component scale") is a fixed scalar (See Section B.1 of the Supplementary Material).
 
 ## Test Results
 ### CLEVR 64x64 @ 160 epochs
