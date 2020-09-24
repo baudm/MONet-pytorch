@@ -81,10 +81,7 @@ class MONetModel(BaseModel):
         for k in range(self.opt.num_slots):
             # Derive mask from current scope
             if k != self.opt.num_slots - 1:
-                log_alpha_k = self.netAttn(self.x, log_s_k)
-                log_m_k = log_s_k + log_alpha_k
-                # Compute next scope
-                log_s_k += (1. - log_alpha_k.exp()).clamp(min=self.eps).log()
+                log_m_k, log_s_k = self.netAttn(self.x, log_s_k)
             else:
                 log_m_k = log_s_k
 
