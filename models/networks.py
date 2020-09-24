@@ -795,4 +795,4 @@ class Attention(nn.Module):
         log_1_m_alpha_k = -alpha_logits + log_alpha_k
         log_new_scope = log_scope + log_alpha_k
         log_mask = log_scope + log_1_m_alpha_k
-        return [log_new_mask, log_new_scope]
+        return [log_mask, log_new_scope]
