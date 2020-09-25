@@ -49,7 +49,6 @@ class MONetModel(BaseModel):
         self.model_names = ['Attn', 'CVAE']
         self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1), gpu_ids=self.gpu_ids)
         self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim), gpu_ids=self.gpu_ids)
-        self.eps = torch.finfo(torch.float).eps
         # define networks; you can use opt.isTrain to specify different behaviors for training and test.
         if self.isTrain:  # only defined during training time
             self.criterionKL = nn.KLDivLoss(reduction='batchmean')
@@ -81,10 +80,10 @@ class MONetModel(BaseModel):
         for k in range(self.opt.num_slots):
             # Derive mask from current scope
             if k != self.opt.num_slots - 1:
-                log_alpha_k = self.netAttn(self.x, log_s_k)
+                log_alpha_k, alpha_logits_k = self.netAttn(self.x, log_s_k)
                 log_m_k = log_s_k + log_alpha_k
                 # Compute next scope
-                log_s_k += (1. - log_alpha_k.exp()).clamp(min=self.eps).log()
+                log_s_k += -alpha_logits_k + log_alpha_k
             else:
                 log_m_k = log_s_k
 

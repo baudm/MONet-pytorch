@@ -790,6 +790,6 @@ class Attention(nn.Module):
         x = self.upblock5(x, skip2)
         x = self.upblock6(x, skip1)
         # Output layer
-        x = self.output(x)
-        x = F.logsigmoid(x)
-        return x
+        logits = self.output(x)
+        x = F.logsigmoid(logits)
+        return x, logits
