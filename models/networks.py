@@ -727,7 +727,7 @@ class AttentionBlock(nn.Module):
 class Attention(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, ngf=64):
+    def __init__(self, input_nc, output_nc, ngf=64, full_res=False):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -735,6 +735,7 @@ class Attention(nn.Module):
             num_downs (int) -- the number of downsamplings in UNet. For example, # if |num_downs| == 7,
                                 image of size 128x128 will become of size 1x1 # at the bottleneck
             ngf (int)       -- the number of filters in the last conv layer
+            full_res (bool) -- if True, the image resolution is 128x128. Else, 64x64.
 
         We construct the U-Net from the innermost layer to the outermost layer.
         It is a recursive process.
@@ -748,12 +749,13 @@ class Attention(nn.Module):
         # no resizing occurs in the last block of each path
         # self.downblock6 = AttentionBlock(ngf * 8, ngf * 8, resize=False)
 
+        feat_dim = 64 if full_res else 16
         self.mlp = nn.Sequential(
-            nn.Linear(4 * 4 * ngf * 8, 128),
+            nn.Linear(feat_dim * ngf * 8, 128),
             nn.ReLU(),
             nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(128, 4 * 4 * ngf * 8),
+            nn.Linear(128, feat_dim * ngf * 8),
             nn.ReLU(),
         )
 

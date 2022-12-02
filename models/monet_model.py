@@ -25,6 +25,7 @@ class MONetModel(BaseModel):
                             dataset_mode='clevr', niter=int(64e6 // 7e4))
         parser.add_argument('--num_slots', metavar='K', type=int, default=7, help='Number of supported slots')
         parser.add_argument('--z_dim', type=int, default=16, help='Dimension of individual z latent per slot')
+        parser.add_argument('--full_res', action="store_true", help='the image resolution is 128 x 128')
         if is_train:
             parser.add_argument('--beta', type=float, default=0.5, help='weight for the encoder KLD')
             parser.add_argument('--gamma', type=float, default=0.5, help='weight for the mask KLD')
@@ -47,8 +48,8 @@ class MONetModel(BaseModel):
                             ['xm{}'.format(i) for i in range(opt.num_slots)] + \
                             ['x', 'x_tilde']
         self.model_names = ['Attn', 'CVAE']
-        self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1), gpu_ids=self.gpu_ids)
-        self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim), gpu_ids=self.gpu_ids)
+        self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1, full_res=opt.full_res), gpu_ids=self.gpu_ids)
+        self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim, full_res=opt.full_res), gpu_ids=self.gpu_ids)
         # define networks; you can use opt.isTrain to specify different behaviors for training and test.
         if self.isTrain:  # only defined during training time
             self.criterionKL = nn.KLDivLoss(reduction='batchmean')
