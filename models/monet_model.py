@@ -47,8 +47,9 @@ class MONetModel(BaseModel):
                             ['xm{}'.format(i) for i in range(opt.num_slots)] + \
                             ['x', 'x_tilde']
         self.model_names = ['Attn', 'CVAE']
-        self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1), gpu_ids=self.gpu_ids)
-        self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim), gpu_ids=self.gpu_ids)
+        self.full_res = opt.load_size == 128
+        self.netAttn = networks.init_net(networks.Attention(opt.input_nc, 1, full_res=self.full_res), gpu_ids=self.gpu_ids)
+        self.netCVAE = networks.init_net(networks.ComponentVAE(opt.input_nc, opt.z_dim, full_res=self.full_res), gpu_ids=self.gpu_ids)
         # define networks; you can use opt.isTrain to specify different behaviors for training and test.
         if self.isTrain:  # only defined during training time
             self.criterionKL = nn.KLDivLoss(reduction='batchmean')
